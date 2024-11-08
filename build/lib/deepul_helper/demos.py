@@ -8,47 +8,38 @@ import torch
 import torch.utils.data as data
 from torchvision import datasets
 from torchvision.utils import make_grid
+
 from deepul_helper.data import get_datasets
 from deepul_helper.tasks import *
 from deepul_helper.utils import accuracy, unnormalize, remove_module_state_dict, seg_idxs_to_color
 from deepul_helper.seg_model import SegmentationModel
-from deepul_helper.tasks.puzzle import PuzzleSolver
+
 
 def load_model_and_data(task, dataset='cifar10'):
-    print(f'Loading model for {task} on {dataset}')
     train_dset, test_dset, n_classes = get_datasets(dataset, task)
     train_loader = data.DataLoader(train_dset, batch_size=128, num_workers=4,
                                    pin_memory=True, shuffle=True)
     test_loader = data.DataLoader(test_dset, batch_size=128, num_workers=4,
                                   pin_memory=True, shuffle=True)
 
-    try:
-        ckpt_pth = osp.join('results', f'{dataset}_{task}', 'model_best.pth.tar')
-        ckpt = torch.load(ckpt_pth, map_location='cpu')
-    except:
-        ckpt = None
-    if dataset == "fashionmnist":
-        dataset = "cifar10"
+    ckpt_pth = osp.join('results', f'{dataset}_{task}', 'model_best.pth.tar')
+    ckpt = torch.load(ckpt_pth, map_location='cpu')
+
     if task == 'context_encoder':
         model = ContextEncoder(dataset, n_classes)
     elif task == 'rotation':
         model = RotationPrediction(dataset, n_classes)
     elif task == 'simclr':
         model = SimCLR(dataset, n_classes, None)
-    elif task == 'puzzle':
-        model = PuzzleSolver(dataset, n_classes)
+    model.load_state_dict(remove_module_state_dict(ckpt['state_dict']))
 
-    if ckpt is not None:
-        model.load_state_dict(remove_module_state_dict(ckpt['state_dict']))
-
-    # model.cuda()
+    model.cuda()
     model.eval()
 
     linear_classifier = model.construct_classifier()
-    if ckpt is not None:
-        linear_classifier.load_state_dict(remove_module_state_dict(ckpt['state_dict_linear']))
+    linear_classifier.load_state_dict(remove_module_state_dict(ckpt['state_dict_linear']))
 
-    # linear_classifier.cuda()
+    linear_classifier.cuda()
     linear_classifier.eval()
 
     return model, linear_classifier, train_loader, test_loader

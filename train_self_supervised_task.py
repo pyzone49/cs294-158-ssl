@@ -82,6 +82,8 @@ def main_worker(gpu, ngpus, args):
         model = CPC(args.dataset, n_classes)
     elif args.task == 'simclr':
         model = SimCLR(args.dataset, n_classes, dist)
+    elif args.task == 'puzzle':
+        model = PuzzleSolver(args.dataset, n_classes)
     else:
         raise Exception('Invalid task:', args.task)
     args.metrics = model.metrics
