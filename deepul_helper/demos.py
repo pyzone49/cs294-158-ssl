@@ -14,12 +14,12 @@ from deepul_helper.utils import accuracy, unnormalize, remove_module_state_dict,
 from deepul_helper.seg_model import SegmentationModel
 from deepul_helper.tasks.puzzle import PuzzleSolver
 
-def load_model_and_data(task, dataset='cifar10'):
+def load_model_and_data(task, dataset='cifar10',batch_size=128):
     print(f'Loading model for {task} on {dataset}')
     train_dset, test_dset, n_classes = get_datasets(dataset, task)
-    train_loader = data.DataLoader(train_dset, batch_size=128, num_workers=4,
+    train_loader = data.DataLoader(train_dset, batch_size=batch_size, num_workers=4,
                                    pin_memory=True, shuffle=True)
-    test_loader = data.DataLoader(test_dset, batch_size=128, num_workers=4,
+    test_loader = data.DataLoader(test_dset, batch_size=batch_size, num_workers=4,
                                   pin_memory=True, shuffle=True)
 
     try:
