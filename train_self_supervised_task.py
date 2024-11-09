@@ -42,7 +42,7 @@ best_acc = 0.0
 
 def main():
     args = parser.parse_args()
-    assert args.task in ['context_encoder', 'rotation', 'cpc', 'simclr']
+    assert args.task in ['context_encoder', 'rotation', 'cpc', 'simclr', 'puzzle']
 
     args.output_dir = osp.join('results', f"{args.dataset}_{args.task}")
     if not osp.exists(args.output_dir):
