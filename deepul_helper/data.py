@@ -4,6 +4,7 @@ import random
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
+import torch
 import torchvision.transforms.functional as F
 from torchvision import datasets
 from torchvision import transforms
@@ -26,6 +27,7 @@ class PuzzleDataset(Dataset):
         :param transform: Optional transform to be applied on a patch.
         """
         self.patch_dim = patch_dim
+        self.patch_size = 96
         self.gap = gap
         self.transform = transform
 
@@ -56,23 +58,43 @@ class PuzzleDataset(Dataset):
 
     def get_patch_from_grid(self, image, patch_dim, gap):
         image = np.array(image)
+        #save img
 
-        offset_x, offset_y = image.shape[0] - (patch_dim * 3 + gap * 2), image.shape[1] - (patch_dim * 3 + gap * 2)
-        start_grid_x, start_grid_y = np.random.randint(0, offset_x), np.random.randint(0, offset_y)
-        patch_loc_arr = [(1, 1), (1, 2), (1, 3), (2, 1), (2, 3), (3, 1), (3, 2), (3, 3)]
-        loc = np.random.randint(len(patch_loc_arr))
-        tempx, tempy = patch_loc_arr[loc]
-
-        patch_x_pt = start_grid_x + patch_dim * (tempx - 1) + gap * (tempx - 1)
-        patch_y_pt = start_grid_y + patch_dim * (tempy - 1) + gap * (tempy - 1)
-        random_patch = image[patch_x_pt:patch_x_pt + patch_dim, patch_y_pt:patch_y_pt + patch_dim]
-
-        patch_x_pt = start_grid_x + patch_dim * (2 - 1) + gap * (2 - 1)
-        patch_y_pt = start_grid_y + patch_dim * (2 - 1) + gap * (2 - 1)
-        uniform_patch = image[patch_x_pt:patch_x_pt + patch_dim, patch_y_pt:patch_y_pt + patch_dim]
-
-        random_patch_label = loc
-
+        #resize
+        image = skimage.transform.resize(image, (400, 400))
+        # Convert pixel values back to [0, 255] range and to uint8
+        image = (image * 255).astype(np.uint8)
+        # cv2.imwrite(
+        #     "/Users/yacineflici/Documents/master-vmi/s3/IFLCM010 Analyse d'images/TP5/self-supervised-learning/cs294-158-ssl/img.jpg",
+        #     image)
+        all_image_patches = []
+        all_labels = []
+        for r in range(patch_dim[0]):
+            for c in range(patch_dim[1]):
+                # Extract a patch of size (patch_size, patch_size) at the (r, c) location
+                start_y = r * (self.patch_size + gap)
+                start_x = c * (self.patch_size + gap)
+                batch_patch = image[start_y:start_y + self.patch_size, start_x:start_x + self.patch_size]
+                #save patch
+                # cv2.imwrite(f"/Users/yacineflici/Documents/master-vmi/s3/IFLCM010 Analyse d'images/TP5/self-supervised-learning/cs294-158-ssl/patch_{r}_{c}.jpg", batch_patch)
+                all_image_patches.append(batch_patch)
+                all_labels.append(r*patch_dim[1] + c)
+        #remove center patch label
+        all_labels.pop(patch_dim[0] * patch_dim[1] // 2)
+        #choose a random patch
+        random_patch_label = random.choice(all_labels)
+        random_patch = all_image_patches[random_patch_label]
+        #choose a uniform patch
+        uniform_patch = all_image_patches[patch_dim[0] * patch_dim[1] // 2]
+        #all to PIL
+        uniform_patch = Image.fromarray((uniform_patch * 255).astype(np.uint8))
+        random_patch = Image.fromarray((random_patch * 255).astype(np.uint8))
+        #save uniform patch
+        # uniform_patch.save("/Users/yacineflici/Documents/master-vmi/s3/IFLCM010 Analyse d'images/TP5/self-supervised-learning/cs294-158-ssl/uniform_patch.jpg")
+        #save random patch
+        # random_patch.save("/Users/yacineflici/Documents/master-vmi/s3/IFLCM010 Analyse d'images/TP5/self-supervised-learning/cs294-158-ssl/random_patch.jpg")
+        #labels to tensor
+        random_patch_label = torch.tensor(random_patch_label, dtype=torch.long)
         return uniform_patch, random_patch, random_patch_label
 
     def __len__(self):
@@ -84,37 +106,9 @@ class PuzzleDataset(Dataset):
         uniform_patch, random_patch, random_patch_label = self.get_patch_from_grid(image,
                                                                                    self.patch_dim,
                                                                                    self.gap)
-        if uniform_patch.shape[0] != 96:
-            uniform_patch = skimage.transform.resize(uniform_patch, (96, 96))
-            random_patch = skimage.transform.resize(random_patch, (96, 96))
-
-            uniform_patch = img_as_float32(uniform_patch)
-            random_patch = img_as_float32(random_patch)
-
-        # Dropped color channels 2 and 3 and replaced with gaussian noise(std ~1/100 of the std of the remaining channel)
-        uniform_patch[:, :, 1] = np.random.normal(0.485, 0.01 * np.std(uniform_patch[:, :, 0]),
-                                                  (uniform_patch.shape[0], uniform_patch.shape[1]))
-        uniform_patch[:, :, 2] = np.random.normal(0.485, 0.01 * np.std(uniform_patch[:, :, 0]),
-                                                  (uniform_patch.shape[0], uniform_patch.shape[1]))
-        random_patch[:, :, 1] = np.random.normal(0.485, 0.01 * np.std(random_patch[:, :, 0]),
-                                                 (random_patch.shape[0], random_patch.shape[1]))
-        random_patch[:, :, 2] = np.random.normal(0.485, 0.01 * np.std(random_patch[:, :, 0]),
-                                                 (random_patch.shape[0], random_patch.shape[1]))
-
-        random_patch_label = np.array(random_patch_label).astype(np.int64)
-
         if self.transform:
             uniform_patch = self.transform(uniform_patch)
             random_patch = self.transform(random_patch)
-
-        #save image if index < 10
-        if index < 10:
-            # Convert tensors to numpy arrays
-            uniform_patch_np = uniform_patch.permute(1, 2, 0).cpu().numpy()  # Convert [C, H, W] -> [H, W, C]
-            random_patch_np = random_patch.permute(1, 2, 0).cpu().numpy()  # Convert [C, H, W] -> [H, W, C]
-
-            plt.imsave(f"uniform_patch_{index}.png", uniform_patch_np.permute(1, 2, 0))
-            plt.imsave(f"random_patch_{index}.png", random_patch_np.permute(1, 2, 0))
         return uniform_patch, random_patch, random_patch_label
 
 
@@ -144,10 +138,12 @@ def get_transform(dataset, task, train=True):
             ])
 
     elif task == "puzzle":
-        transform =  transforms.Compose([transforms.ToTensor(),
-                                             transforms.Normalize(mean=[0.485, 0.456, 0.406],
-
-        std=[0.229, 0.224, 0.225])])
+        transform = transforms.Compose([
+                                        # transforms.Resize((400, 400)),
+                                        #to gray
+                                        transforms.Grayscale(num_output_channels=3),
+                                        transforms.ToTensor(),
+                                         transforms.Normalize(mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225])])
     elif task == 'rotation':
         if dataset == 'cifar10':
             if train:
@@ -289,11 +285,16 @@ def get_transform(dataset, task, train=True):
 
 def get_datasets(dataset, task):
     if task == "puzzle":
-        train_dset = PuzzleDataset(dataset,patch_dim=5, gap=1, validate=False,
-                                   transform=get_transform(dataset, task, train=True))
-        test_dset = PuzzleDataset(dataset,patch_dim=5, gap=1, validate=True,
-                                  transform=get_transform(dataset, task, train=False))
+        train_dset = PuzzleDataset(dataset, patch_dim=(3, 3), gap=10, validate=False, transform=get_transform(dataset, task, train=True))
+        test_dset = PuzzleDataset(dataset, patch_dim=(3, 3), gap=10, validate=True, transform=get_transform(dataset, task, train=False))
+        # train_dset = datasets.CIFAR10(osp.join('data', dataset), train=True, download=True,transform=get_transform(dataset, task, train=True))
+        # test_dset = datasets.CIFAR10(osp.join('data', dataset), train=False, download=True,transform=get_transform(dataset, task, train=False))
+        # train_dset = datasets.VOCDetection(root=osp.join('data', dataset), year='2012', image_set='train', download=True,
+        #                                    transform=get_transform(dataset, task, train=True))
+        # test_dset = datasets.VOCDetection(osp.join('data', dataset), year='2012', image_set='val', download=True, transform=get_transform(dataset, task, train=False))
+
         return train_dset, test_dset, 10
+
 
     if 'imagenet' in dataset:
         train_dir = osp.join('data', dataset, 'train')
