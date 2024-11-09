@@ -26,34 +26,12 @@ class PuzzleSolver(nn.Module):
     def construct_classifier(self):
         return nn.Sequential(BatchNorm1d(self.latent_dim, center=False), nn.Linear(self.latent_dim, self.n_classes))
 
-    def forward(self, images):
-        batch_size = images.shape[0]
-        # Get patches and corresponding labels
-        patches, labels = images_to_cpc_patches(images, patch_size=self.target_dim, stride=48, grid_dim=(7, 7))
-
-        # Pass patches through the network to get embeddings
-        embeddings = self.network.forward_once(patches)  # Shape: (N * 49, latent_dim)
-
-        # Reshape embeddings back to the grid format (N, nb_lines, nb_lines, latent_dim)
-        embeddings = embeddings.view(batch_size, self.nb_lines, self.nb_lines, -1)
-
-        # Select embeddings for the steps we want to ignore and steps we want to predict
-        context_embeddings = embeddings[:, :self.nb_lines - self.steps_to_ignore, :self.nb_lines - self.steps_to_ignore,
-                             :]
-        target_embeddings = embeddings[:, self.steps_to_ignore:, self.steps_to_ignore:, :]
-
-        # Flatten context and target embeddings for easier prediction
-        context_embeddings = context_embeddings.view(batch_size, -1, self.latent_dim)
-        target_embeddings = target_embeddings.view(batch_size, -1, self.latent_dim)
-
-        # Calculate predictions for target patches using the context embeddings
-        predictions = self.classifier(context_embeddings)
-
-        # (Optional) Calculate a loss if CPC or contrastive learning is used
-        # For demonstration, let’s assume we want to calculate a simple contrastive loss
-        loss = F.mse_loss(predictions, target_embeddings)  # Use mean squared error as a placeholder
-
-        return dict(Loss=loss), predictions
+    def forward(self,  uniform_patch, random_patch, labels):
+        output_fc6_uniform = self.network.forward_once(uniform_patch)
+        output_fc6_random = self.network.forward_once(random_patch)
+        output = torch.cat((output_fc6_uniform,output_fc6_random), 1)
+        output = self.network.fc(output)
+        return output, output_fc6_uniform, output_fc6_random
 
 
 def images_to_cpc_patches(images, patch_size=96, stride=4, grid_dim=(3, 3)):

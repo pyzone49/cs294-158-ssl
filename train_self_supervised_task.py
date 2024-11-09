@@ -13,6 +13,7 @@ import torch.multiprocessing as mp
 import torch.optim.lr_scheduler as lr_scheduler
 
 from deepul_helper.tasks import *
+from deepul_helper.tasks.puzzle import PuzzleSolver
 from deepul_helper.utils import AverageMeter, ProgressMeter, accuracy
 from deepul_helper.data import get_datasets
 from deepul_helper.lars import LARS

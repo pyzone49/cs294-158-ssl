@@ -78,9 +78,9 @@ class PuzzleDataset(Dataset):
                 #save patch
                 # cv2.imwrite(f"/Users/yacineflici/Documents/master-vmi/s3/IFLCM010 Analyse d'images/TP5/self-supervised-learning/cs294-158-ssl/patch_{r}_{c}.jpg", batch_patch)
                 all_image_patches.append(batch_patch)
-                all_labels.append(r*patch_dim[1] + c)
+                # all_labels.append(r*patch_dim[1] + c)
         #remove center patch label
-        all_labels.pop(patch_dim[0] * patch_dim[1] // 2)
+        all_labels = [0,1,2,3,4,5,6,7]
         #choose a random patch
         random_patch_label = random.choice(all_labels)
         random_patch = all_image_patches[random_patch_label]
