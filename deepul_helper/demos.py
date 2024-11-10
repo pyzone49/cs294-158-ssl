@@ -26,6 +26,7 @@ def load_model_and_data(task, dataset='cifar10',batch_size=128):
         ckpt_pth = osp.join('results', f'{dataset}_{task}', 'model_best.pth.tar')
         ckpt = torch.load(ckpt_pth, map_location='cpu')
     except:
+        print(f'No checkpoint found at {ckpt_pth}')
         ckpt = None
     if dataset == "fashionmnist":
         dataset = "cifar10"
@@ -39,7 +40,13 @@ def load_model_and_data(task, dataset='cifar10',batch_size=128):
         model = PuzzleSolver(dataset, n_classes)
 
     if ckpt is not None:
-        model.load_state_dict(remove_module_state_dict(ckpt['state_dict']))
+        if task == "puzzle":
+            # model.load_state_dict(remove_module_state_dict(ckpt['model_state_dict']))
+            # state_dict = torch.load(ckpt['model_state_dict'])
+            # new_state_dict = {f"network.{k}": v for k, v in ckpt.items()}
+            model.load_state_dict(ckpt["model_state_dict"])
+        else:
+            model.load_state_dict(remove_module_state_dict(ckpt['state_dict']))
 
     # model.cuda()
     model.eval()

@@ -9,7 +9,7 @@ from deepul_helper.batch_norm import BatchNorm1d
 
 
 class PuzzleSolver(nn.Module):
-    latent_dim = 2048
+    latent_dim = 4096
     metrics = ['Loss']
     metrics_fmt = [':.4e']
 
