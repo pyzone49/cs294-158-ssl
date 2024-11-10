@@ -61,7 +61,7 @@ class PuzzleDataset(Dataset):
         #save img
 
         #resize
-        image = skimage.transform.resize(image, (400, 400))
+        image = skimage.transform.resize(image, (320, 320))
         # Convert pixel values back to [0, 255] range and to uint8
         image = (image * 255).astype(np.uint8)
         # cv2.imwrite(
