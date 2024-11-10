@@ -81,11 +81,13 @@ class PuzzleDataset(Dataset):
                 # all_labels.append(r*patch_dim[1] + c)
         #remove center patch label
         all_labels = [0,1,2,3,4,5,6,7]
+        # choose a uniform patch
+        uniform_patch = all_image_patches[patch_dim[0] * patch_dim[1] // 2]
+        #remove center patch
+        all_image_patches.pop(patch_dim[0] * patch_dim[1] // 2)
         #choose a random patch
         random_patch_label = random.choice(all_labels)
         random_patch = all_image_patches[random_patch_label]
-        #choose a uniform patch
-        uniform_patch = all_image_patches[patch_dim[0] * patch_dim[1] // 2]
         #all to PIL
         uniform_patch = Image.fromarray((uniform_patch * 255).astype(np.uint8))
         random_patch = Image.fromarray((random_patch * 255).astype(np.uint8))
