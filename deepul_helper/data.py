@@ -31,26 +31,25 @@ class PuzzleDataset(Dataset):
         self.gap = gap
         self.transform = transform
 
-        # Load the specified dataset based on the string value of `dataset`
         if dataset == 'cifar10':
             self.data = datasets.CIFAR10(
                 osp.join('data', dataset),
                 train=not validate,
-                transform=None,  # We'll apply transformations in __getitem__
+                transform=None,
                 download=True
             )
         elif dataset == 'pascalvoc2012':
             self.data = datasets.VOCSegmentation(
                 osp.join('data', dataset),
                 image_set='val' if validate else 'train',
-                transforms=None,  # No built-in transforms; we'll handle them manually
+                transforms=None,
                 download=True
             )
         elif dataset == 'fashionmnist':
             self.data = datasets.FashionMNIST(
                 osp.join('data', dataset),
                 train=not validate,
-                transform=None,  # We'll apply transformations in __getitem__
+                transform=None,
                 download=True
             )
         else:
@@ -62,7 +61,7 @@ class PuzzleDataset(Dataset):
 
         #resize
         image = skimage.transform.resize(image, (320, 320))
-        # Convert pixel values back to [0, 255] range and to uint8
+
         image = (image * 255).astype(np.uint8)
         # cv2.imwrite(
         #     "/Users/yacineflici/Documents/master-vmi/s3/IFLCM010 Analyse d'images/TP5/self-supervised-learning/cs294-158-ssl/img.jpg",
@@ -71,15 +70,12 @@ class PuzzleDataset(Dataset):
         all_labels = []
         for r in range(patch_dim[0]):
             for c in range(patch_dim[1]):
-                # Extract a patch of size (patch_size, patch_size) at the (r, c) location
                 start_y = r * (self.patch_size + gap)
                 start_x = c * (self.patch_size + gap)
                 batch_patch = image[start_y:start_y + self.patch_size, start_x:start_x + self.patch_size]
                 #save patch
                 # cv2.imwrite(f"/Users/yacineflici/Documents/master-vmi/s3/IFLCM010 Analyse d'images/TP5/self-supervised-learning/cs294-158-ssl/patch_{r}_{c}.jpg", batch_patch)
                 all_image_patches.append(batch_patch)
-                # all_labels.append(r*patch_dim[1] + c)
-        #remove center patch label
         all_labels = [0,1,2,3,4,5,6,7]
         # choose a uniform patch
         uniform_patch = all_image_patches[patch_dim[0] * patch_dim[1] // 2]
@@ -103,7 +99,6 @@ class PuzzleDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, index):
-        # image = Image.open(self.data[index][0]).convert('RGB')
         image = self.data[index][0]
         uniform_patch, random_patch, random_patch_label = self.get_patch_from_grid(image,
                                                                                    self.patch_dim,
@@ -141,8 +136,6 @@ def get_transform(dataset, task, train=True):
 
     elif task == "puzzle":
         transform = transforms.Compose([
-                                        # transforms.Resize((400, 400)),
-                                        #to gray
                                         transforms.Grayscale(num_output_channels=3),
                                         transforms.ToTensor(),
                                          transforms.Normalize(mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225])])
